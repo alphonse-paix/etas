@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <execution>
 #include <filesystem>
 #include <fstream>
@@ -164,8 +165,7 @@ Sequence etas(const Config& cfg) {
                 }
             }
 
-            auto sort = [](const Point& p1, const Point& p2)
-            {
+            auto sort = [](const Point& p1, const Point& p2) {
                 return p1.t < p2.t;
             };
 
@@ -234,6 +234,7 @@ void generate_seqs(const Config& cfg) {
 Config parse_arguments(int argc, char* argv[]) {
     po::options_description desc("Allowed options");
     desc.add_options()
+        ("help", "")
         ("tmax", po::value<double>()->default_value(100), "")
         ("mu", po::value<double>()->default_value(1), "")
         ("alpha", po::value<double>()->default_value(2), "")
@@ -255,6 +256,11 @@ Config parse_arguments(int argc, char* argv[]) {
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
+
+    if (vm.count("help")) {
+        std::cout << desc << '\n';
+        std::exit(0);
+    }
 
     return Config{
         vm["tmax"].as<double>(),
