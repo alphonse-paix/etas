@@ -11,18 +11,25 @@
 #include <thread>
 #include <vector>
 
-const double mu = 1.0;
-const double alpha = 2.0;
-const double bar_n = 0.9;
-const double p = 1.1;
-const double c = 1.0E-9;
-const double beta = std::log(10);
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
+namespace args {
+    double mu = 1;
+    double alpha = 2;
+    double bar_n = 0.9;
+    double p = 1.1;
+    double c = 1e-09;
+    double beta = std::log(10);
+    double tmax = 1e+03;
+    std::string filename = "data.csv";
+    std::string dirname = "data";
+}
 
 const int bar_width = 40;
 const double delay = 0.5;    // refresh delay in seconds
 
-void update_bar(const double progress, const std::string& status = "")
-{
+void update_bar(const double progress, const std::string& status = "") {
     const int pos = static_cast<int>(progress * bar_width);
 
     std::cout << '[';
@@ -39,24 +46,20 @@ void update_bar(const double progress, const std::string& status = "")
     std::cout.flush();
 }
 
-void close_bar(const std::string& status = "")
-{
+void close_bar(const std::string& status = "") {
     update_bar(1, status);
     std::cout << '\n';
 }
 
-std::string to_string(const double x, int precision = 2)
-{
+std::string to_string(const double x, int precision = 2) {
     std::ostringstream ss;
 
     ss << std::setprecision(precision) << x;
     return ss.str();
 }
 
-namespace rd
-{
-    inline std::mt19937 init()
-    {
+namespace rd {
+    inline std::mt19937 init() {
         std::random_device rd;
         std::seed_seq ss{ rd(), rd(), rd(), rd() };
 
@@ -66,19 +69,16 @@ namespace rd
     inline std::mt19937 mt = init();
     inline std::uniform_real_distribution<double> d{ 0, 1 };
 
-    inline double logrand()
-    {
+    inline double logrand() {
         return std::log(d(mt));
     }
 
-    inline double mag()
-    {
+    inline double mag(double beta) {
         return -1 / beta * logrand();
     }
 }
 
-struct Point
-{
+struct Point {
     double          t;
     double          m;
     std::size_t     parent;
@@ -86,8 +86,7 @@ struct Point
 
 using Sequence = std::vector<Point>;
 
-Sequence etas(const double tmax = 100.0, const bool verbose = true)
-{
+Sequence etas(const bool verbose = true) {
     Sequence seq;
     double tc = 0;
     double m_max = 0;
@@ -95,20 +94,20 @@ Sequence etas(const double tmax = 100.0, const bool verbose = true)
     if (verbose)
         std::cout << "Generating background earthquakes...\n";
 
-    while (tc < tmax) {
-        const double dt = -1 / mu * rd::logrand();
+    while (tc < args::tmax) {
+        const double dt = -1 / args::mu * rd::logrand();
 
         tc += dt;
-        if (tc < tmax) {
-            const double m = rd::mag();
+        if (tc < args::tmax) {
+            const double m = rd::mag(args::beta);
 
             m_max = std::max(m_max, m);
             seq.push_back({ tc, m, 0 });
         }
     }
 
-    const double a = bar_n * (p - 1) * (beta - alpha)
-        / (beta * std::pow(c, 1 - p));
+    const double a = args::bar_n * (args::p - 1) * (args::beta - args::alpha)
+        / (args::beta * std::pow(args::c, 1 - args::p));
 
     if (a > 0) {
         std::size_t nc = 0;
@@ -116,7 +115,7 @@ Sequence etas(const double tmax = 100.0, const bool verbose = true)
 
         if (verbose) {
             std::cout << "Generating aftershocks...\n";
-            update_bar(seq[nc].t / tmax, to_string(m_max));
+            update_bar(seq[nc].t / args::tmax, to_string(m_max));
         }
 
         while (true) {
@@ -127,23 +126,23 @@ Sequence etas(const double tmax = 100.0, const bool verbose = true)
                 const std::chrono::duration<double> diff = end - start;
 
                 if (diff.count() > delay) {
-                    update_bar(seq[nc].t / tmax, to_string(m_max));
+                    update_bar(seq[nc].t / args::tmax, to_string(m_max));
                     start = end;
                 }
             }
 
             while (true) {
-                const double tmp = std::pow(tc + c, 1 - p) + (p - 1)
-                    / (a * std::exp(alpha * seq[nc].m))
+                const double tmp = std::pow(tc + args::c, 1 - args::p) + (args::p - 1)
+                    / (a * std::exp(args::alpha * seq[nc].m))
                     * rd::logrand();
 
                 if (tmp > 0) {
-                    const double dt = std::pow(tmp, 1 / (1 - p)) - tc - c;
+                    const double dt = std::pow(tmp, 1 / (1 - args::p)) - tc - args::c;
                     tc += dt;
                     const double tc_nc = tc + seq[nc].t;
 
-                    if (tc_nc < tmax) {
-                        const double m = rd::mag();
+                    if (tc_nc < args::tmax) {
+                        const double m = rd::mag(args::beta);
 
                         m_max = std::max(m_max, m);
                         seq.push_back({ tc_nc, m, nc + 1 });
@@ -177,8 +176,7 @@ Sequence etas(const double tmax = 100.0, const bool verbose = true)
 }
 
 void write_to_file(const Sequence& seq, const std::string& filename,
-    bool verbose = true)
-{
+    bool verbose = true) {
     std::ofstream file{ filename };
     std::size_t id = 0;
 
@@ -192,9 +190,8 @@ void write_to_file(const Sequence& seq, const std::string& filename,
         << filename << "`.\n";
 }
 
-void generate_seqs(int num_seqs, std::size_t max_len, double tmax = 100.0,
-    const std::string& dirname = "data", bool verbose = true)
-{
+void generate_seqs(int num_seqs, std::size_t max_len,
+    const std::string& dirname = "data", bool verbose = true) {
     if (!std::filesystem::create_directory(dirname)) {
         std::cout << "Could not create directory, exiting...\n";
         return;
@@ -205,7 +202,7 @@ void generate_seqs(int num_seqs, std::size_t max_len, double tmax = 100.0,
 
     for (int i = 1; i <= num_seqs; ++i) {
         do {
-            const Sequence seq = etas(tmax, false);
+            const Sequence seq = etas(false);
 
             if (seq.size() <= max_len) {
                 const std::string filename = dirname + "/data"
@@ -224,17 +221,98 @@ void generate_seqs(int num_seqs, std::size_t max_len, double tmax = 100.0,
         close_bar();
 }
 
-int main()
-{
-    const std::string dirname = "data";
-    double tmax = 100.0;
-    generate_seqs(100, 300, tmax, dirname);
-    
-    const auto tmax50 = etas(50.0);
-    write_to_file(tmax50, "tmax50.csv");
-    
-    const auto tmax5k = etas(5000.0);
-    write_to_file(tmax5k, "tmax5k.csv");
+void print_args() {
+    std::cout << "Executing program with following parameters:\n";
+    std::cout << "tmax\t\t" << args::tmax << '\n';
+    std::cout << "mu\t\t" << args::mu << '\n';
+    std::cout << "alpha\t\t" << args::alpha << '\n';
+    std::cout << "bar_n\t\t" << args::bar_n << '\n';
+    std::cout << "p\t\t" << args::p << '\n';
+    std::cout << "c\t\t" << args::c << '\n';
+    std::cout << "beta\t\t" << args::beta << '\n';
+    std::cout << "filename\t" << args::filename << '\n';
+    std::cout << "dirname\t\t" << args::dirname << '\n';
+}
+
+int main(int argc, char* argv[]) {
+    // arguments parsing
+    // -----------------
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("help", "ETAS algorithm implementation")
+        ("tmax", po::value<double>(), "")
+        ("mu", po::value<double>(), "")
+        ("alpha", po::value<double>(), "")
+        ("bar_n", po::value<double>(), "")
+        ("p", po::value<double>(), "")
+        ("c", po::value<double>(), "")
+        ("beta", po::value<double>(), "")
+        ("filename", po::value<std::string>(), "")
+        ("dirname", po::value<std::string>(), "")
+        ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+        std::cout << desc << "\n";
+        return 0;
+    }
+
+    if (vm.count("tmax")) {
+        std::cout << "Setting tmax...\n";
+        args::tmax = vm["tmax"].as<double>();
+    }
+
+    if (vm.count("mu")) {
+        std::cout << "Setting mu...\n";
+        args::mu = vm["mu"].as<double>();
+    }
+
+    if (vm.count("alpha")) {
+        std::cout << "Setting alpha...\n";
+        args::alpha = vm["alpha"].as<double>();
+    }
+
+    if (vm.count("bar_n")) {
+        std::cout << "Setting bar_n...\n";
+        args::bar_n = vm["bar_n"].as<double>();
+    }
+
+    if (vm.count("p")) {
+        std::cout << "Setting p...\n";
+        args::p = vm["p"].as<double>();
+    }
+
+    if (vm.count("c")) {
+        std::cout << "Setting c...\n";
+        args::c = vm["c"].as<double>();
+    }
+
+    if (vm.count("beta")) {
+        std::cout << "Setting beta...\n";
+        args::beta = vm["beta"].as<double>();
+    }
+
+    if (vm.count("filename")) {
+        std::cout << "Setting filename...\n";
+        args::filename = vm["filename"].as<std::string>();
+    }
+
+    if (vm.count("dirname")) {
+        std::cout << "Setting dirname...\n";
+        args::dirname = vm["dirname"].as<std::string>();
+    }
+
+    // print ETAS simulation arguments
+    // -------------------------------
+    print_args();
+
+    // simulation
+    // ----------    
+    const auto tmax3k = etas();
+    write_to_file(tmax3k, args::filename);
 
     return 0;
 }
