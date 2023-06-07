@@ -63,16 +63,8 @@ void update_bar(const double progress, const T& status)
 template<typename T>
 void close_bar(const T& status)
 {
-    update_bar<T>(1, status);
+    update_bar(1, status);
     std::cout << '\n';
-}
-
-std::string to_string(const double x, int precision = 2)
-{
-    std::ostringstream ss;
-
-    ss << std::setprecision(precision) << x;
-    return ss.str();
 }
 
 namespace rd
