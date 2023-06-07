@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <exception>
 #include <execution>
 #include <filesystem>
 #include <fstream>
@@ -12,11 +13,15 @@
 #include <thread>
 #include <vector>
 
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
+#include "argparse.hpp"
 
-const int bar_width = 40;
-const double delay = 0.5;   // progress bar update delay in s
+namespace pbar_settings {
+    constexpr int bar_width     = 40;
+    constexpr double delay      = 0.5;   // update delay (s)
+    constexpr char fill         = '=';
+    constexpr char lead         = '>';
+    constexpr char remainder    = ' ';
+}
 
 struct Config {
     double tmax;
@@ -38,13 +43,13 @@ struct Config {
 };
 
 void update_bar(const double progress, const std::string& status = "") {
-    const int pos = static_cast<int>(progress * bar_width);
+    const int pos = static_cast<int>(progress * pbar_settings::bar_width);
 
     std::cout << '[';
-    for (int i = 0; i < bar_width; ++i) {
-        if (i < pos)        std::cout << '=';
-        else if (i == pos)  std::cout << '>';
-        else                std::cout << ' ';
+    for (int i = 0; i < pbar_settings::bar_width; ++i) {
+        if (i < pos)        std::cout << pbar_settings::fill;
+        else if (i == pos)  std::cout << pbar_settings::lead;
+        else                std::cout << pbar_settings::remainder;
     }
     std::cout << "] " << std::setw(3)
         << static_cast<int>(progress * 100) << "%";
@@ -134,7 +139,7 @@ Sequence etas(const Config& cfg) {
                 const auto end = std::chrono::high_resolution_clock::now();
                 const std::chrono::duration<double> diff = end - start;
 
-                if (diff.count() > delay) {
+                if (diff.count() > pbar_settings::delay) {
                     update_bar(seq[nc].t / cfg.tmax, to_string(m_max));
                     start = end;
                 }
@@ -231,57 +236,6 @@ void generate_seqs(const Config& cfg) {
         close_bar();
 }
 
-Config parse_arguments(int argc, char* argv[]) {
-    po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help", "")
-        ("tmax", po::value<double>()->default_value(100), "")
-        ("mu", po::value<double>()->default_value(1), "")
-        ("alpha", po::value<double>()->default_value(2), "")
-        ("bar_n", po::value<double>()->default_value(0.9), "")
-        ("p", po::value<double>()->default_value(1.1), "")
-        ("c", po::value<double>()->default_value(1e-09), "")
-        ("beta", po::value<double>()->default_value(std::log(10)), "")
-
-        ("generate_seqs", po::bool_switch()->default_value(false), "")
-        ("num_seqs", po::value<int>()->default_value(100), "")
-        ("max_len", po::value<int>()->default_value(300), "")
-
-        ("filename", po::value<std::string>()->default_value("data.csv"), "")
-        ("dirname", po::value<std::string>()->default_value("data"), "")
-
-        ("verbose", po::bool_switch()->default_value(false), "")
-        ;
-
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
-
-    if (vm.count("help")) {
-        std::cout << desc << '\n';
-        std::exit(0);
-    }
-
-    return Config{
-        vm["tmax"].as<double>(),
-        vm["mu"].as<double>(),
-        vm["alpha"].as<double>(),
-        vm["bar_n"].as<double>(),
-        vm["p"].as<double>(),
-        vm["c"].as<double>(),
-        vm["beta"].as<double>(),
-
-        vm["generate_seqs"].as<bool>(),
-        vm["num_seqs"].as<int>(),
-        vm["max_len"].as<int>(),
-
-        vm["filename"].as<std::string>(),
-        vm["dirname"].as<std::string>(),
-
-        vm["verbose"].as<bool>()
-    };
-}
-
 void print_args(const Config& cfg) {
     std::cout << "Executing program with following parameters:\n";
     std::cout << std::boolalpha;
@@ -302,6 +256,70 @@ void print_args(const Config& cfg) {
     std::cout << "dirname\t\t" << cfg.dirname << "\n\n";
 
     std::cout << "verbose\t\t" << cfg.verbose << '\n';
+}
+
+Config parse_arguments(int argc, char* argv[]) {
+    argparse::ArgumentParser program{ "ETAS" };
+
+    program.add_argument("--tmax").default_value(100.0)
+        .scan<'g', double>();
+    program.add_argument("--mu").default_value(1.0)
+        .scan<'g', double>();
+    program.add_argument("--alpha").default_value(2.0)
+        .scan<'g', double>();
+    program.add_argument("--bar_n").default_value(0.9)
+        .scan<'g', double>();
+    program.add_argument("--p").default_value(1.1)
+        .scan<'g', double>();
+    program.add_argument("--c").default_value(1e-09)
+        .scan<'g', double>();
+    program.add_argument("--beta").default_value(std::log(10))
+        .scan<'g', double>();
+
+    program.add_argument("--generate_seqs")
+        .default_value(false)
+        .implicit_value(true);
+    program.add_argument("--num_seqs").default_value(100)
+        .scan<'i', int>();
+    program.add_argument("--max_len").default_value(300)
+        .scan<'i', int>();
+
+    program.add_argument("--filename")
+        .default_value(std::string{ "data.csv" });
+    program.add_argument("--dirname")
+        .default_value(std::string{ "data" });
+
+    program.add_argument("--verbose")
+        .default_value(false)
+        .implicit_value(true);
+
+    try {
+        program.parse_args(argc, argv);
+    }
+    catch (const std::runtime_error& err) {
+        std::cerr << err.what() << '\n';
+        std::cerr << program;
+        std::exit(1);
+    }
+
+    return Config{
+        program.get<double>("--tmax"),
+        program.get<double>("--mu"),
+        program.get<double>("--alpha"),
+        program.get<double>("--bar_n"),
+        program.get<double>("--p"),
+        program.get<double>("--c"),
+        program.get<double>("--beta"),
+
+        program.get<bool>("--generate_seqs"),
+        program.get<int>("--num_seqs"),
+        program.get<int>("--max_len"),
+
+        program.get<std::string>("--filename"),
+        program.get<std::string>("--dirname"),
+
+        program.get<bool>("--verbose"),
+    };
 }
 
 int main(int argc, char* argv[]) {
