@@ -15,7 +15,8 @@
 
 #include "argparse.hpp"
 
-namespace pbar_settings {
+namespace pbar_settings
+{
     constexpr int bar_width     = 40;
     constexpr double delay      = 0.5;   // update delay (s)
     constexpr char fill         = '=';
@@ -23,7 +24,8 @@ namespace pbar_settings {
     constexpr char remainder    = ' ';
 }
 
-struct Config {
+struct Config
+{
     double tmax;
     double mu;
     double alpha;
@@ -42,7 +44,9 @@ struct Config {
     bool verbose;
 };
 
-void update_bar(const double progress, const std::string& status = "") {
+template<typename T>
+void update_bar(const double progress, const T& status)
+{
     const int pos = static_cast<int>(progress * pbar_settings::bar_width);
 
     std::cout << '[';
@@ -51,28 +55,30 @@ void update_bar(const double progress, const std::string& status = "") {
         else if (i == pos)  std::cout << pbar_settings::lead;
         else                std::cout << pbar_settings::remainder;
     }
-    std::cout << "] " << std::setw(3)
-        << static_cast<int>(progress * 100) << "%";
-    if (status != "")
-        std::cout << " -- " << status;
+    std::cout << "] " << std::setw(3) << static_cast<int>(progress * 100) << "% " << status;
     std::cout << '\r';
     std::cout.flush();
 }
 
-void close_bar(const std::string& status = "") {
-    update_bar(1, status);
+template<typename T>
+void close_bar(const T& status)
+{
+    update_bar<T>(1, status);
     std::cout << '\n';
 }
 
-std::string to_string(const double x, int precision = 2) {
+std::string to_string(const double x, int precision = 2)
+{
     std::ostringstream ss;
 
     ss << std::setprecision(precision) << x;
     return ss.str();
 }
 
-namespace rd {
-    inline std::mt19937 init() {
+namespace rd
+{
+    inline std::mt19937 init()
+    {
         std::random_device rd;
         std::seed_seq ss{ rd(), rd(), rd(), rd() };
 
@@ -82,16 +88,19 @@ namespace rd {
     inline std::mt19937 mt = init();
     inline std::uniform_real_distribution<double> d{ 0, 1 };
 
-    inline double logrand() {
+    inline double logrand()
+    {
         return std::log(d(mt));
     }
 
-    inline double mag(double beta) {
+    inline double mag(double beta)
+    {
         return -1 / beta * logrand();
     }
 }
 
-struct Point {
+struct Point
+{
     double          t;
     double          m;
     std::size_t     parent;
@@ -99,7 +108,8 @@ struct Point {
 
 using Sequence = std::vector<Point>;
 
-Sequence etas(const Config& cfg) {
+Sequence etas(const Config& cfg)
+{
     Sequence seq;
     double tc = 0;
     double m_max = 0;
@@ -129,7 +139,7 @@ Sequence etas(const Config& cfg) {
 
         if (verbose) {
             std::cout << "Generating aftershocks...\n";
-            update_bar(seq[nc].t / cfg.tmax, to_string(m_max));
+            update_bar(seq[nc].t / cfg.tmax, m_max);
         }
 
         while (true) {
@@ -140,7 +150,7 @@ Sequence etas(const Config& cfg) {
                 const std::chrono::duration<double> diff = end - start;
 
                 if (diff.count() > pbar_settings::delay) {
-                    update_bar(seq[nc].t / cfg.tmax, to_string(m_max));
+                    update_bar(seq[nc].t / cfg.tmax, m_max);
                     start = end;
                 }
             }
@@ -170,7 +180,8 @@ Sequence etas(const Config& cfg) {
                 }
             }
 
-            auto sort = [](const Point& p1, const Point& p2) {
+            auto sort = [](const Point& p1, const Point& p2)
+            {
                 return p1.t < p2.t;
             };
 
@@ -186,13 +197,13 @@ Sequence etas(const Config& cfg) {
     }
 
     if (verbose)
-        close_bar(to_string(m_max));
+        close_bar(m_max);
 
     return seq;
 }
 
-void write_to_file(const Sequence& seq, const std::string& filename,
-    bool verbose = true) {
+void write_to_file(const Sequence& seq, const std::string& filename, bool verbose = true)
+{
     std::ofstream file{ filename };
     std::size_t id = 0;
 
@@ -202,11 +213,11 @@ void write_to_file(const Sequence& seq, const std::string& filename,
     }
 
     if (verbose)
-        std::cout << seq.size() << " events written to file `"
-        << filename << "`.\n";
+        std::cout << seq.size() << " events written to file `" << filename << "`.\n";
 }
 
-void generate_seqs(const Config& cfg) {
+void generate_seqs(const Config& cfg)
+{
     if (!std::filesystem::create_directory(cfg.dirname)) {
         std::cout << "Could not create directory, exiting...\n";
         return;
@@ -229,36 +240,38 @@ void generate_seqs(const Config& cfg) {
         } while (true);
 
         if (cfg.verbose)
-            update_bar(static_cast<double>(i) / cfg.num_seqs);
+            update_bar(static_cast<double>(i) / cfg.num_seqs, "");
     }
 
     if (cfg.verbose)
-        close_bar();
+        close_bar("");
 }
 
-void print_args(const Config& cfg) {
-    std::cout << "Executing program with following parameters:\n";
+void print_args(const Config& cfg)
+{
+    std::cout << "Program configuration:\n";
     std::cout << std::boolalpha;
 
-    std::cout << "tmax\t\t" << cfg.tmax << '\n';
-    std::cout << "mu\t\t" << cfg.mu << '\n';
-    std::cout << "alpha\t\t" << cfg.alpha << '\n';
-    std::cout << "bar_n\t\t" << cfg.bar_n << '\n';
-    std::cout << "p\t\t" << cfg.p << '\n';
-    std::cout << "c\t\t" << cfg.c << '\n';
-    std::cout << "beta\t\t" << cfg.beta << "\n\n";
+    std::cout << "  tmax\t\t" << cfg.tmax << '\n';
+    std::cout << "  mu\t\t" << cfg.mu << '\n';
+    std::cout << "  alpha\t\t" << cfg.alpha << '\n';
+    std::cout << "  bar_n\t\t" << cfg.bar_n << '\n';
+    std::cout << "  p\t\t" << cfg.p << '\n';
+    std::cout << "  c\t\t" << cfg.c << '\n';
+    std::cout << "  beta\t\t" << cfg.beta << "\n\n";
 
-    std::cout << "generate_seqs\t" << cfg.generate_seqs << '\n';
-    std::cout << "num_seqs\t" << cfg.num_seqs << '\n';
-    std::cout << "max_len\t\t" << cfg.max_len << "\n\n";
+    std::cout << "  generate_seqs\t" << cfg.generate_seqs << '\n';
+    std::cout << "  num_seqs\t" << cfg.num_seqs << '\n';
+    std::cout << "  max_len\t\t" << cfg.max_len << "\n\n";
 
-    std::cout << "filename\t" << cfg.filename << '\n';
-    std::cout << "dirname\t\t" << cfg.dirname << "\n\n";
+    std::cout << "  filename\t" << cfg.filename << '\n';
+    std::cout << "  dirname\t\t" << cfg.dirname << "\n\n";
 
-    std::cout << "verbose\t\t" << cfg.verbose << '\n';
+    std::cout << "  verbose\t\t" << cfg.verbose << '\n';
 }
 
-Config parse_arguments(int argc, char* argv[]) {
+Config parse_arguments(int argc, char* argv[])
+{
     argparse::ArgumentParser program{ "ETAS" };
 
     program.add_argument("--tmax").default_value(100.0)
@@ -293,6 +306,10 @@ Config parse_arguments(int argc, char* argv[]) {
         .default_value(false)
         .implicit_value(true);
 
+    program.add_argument("--print_config")
+        .default_value(false)
+        .implicit_value(true);
+
     try {
         program.parse_args(argc, argv);
     }
@@ -302,7 +319,7 @@ Config parse_arguments(int argc, char* argv[]) {
         std::exit(1);
     }
 
-    return Config{
+    Config cfg{
         program.get<double>("--tmax"),
         program.get<double>("--mu"),
         program.get<double>("--alpha"),
@@ -320,21 +337,21 @@ Config parse_arguments(int argc, char* argv[]) {
 
         program.get<bool>("--verbose"),
     };
+
+    if (program["--print_config"] == true)
+        print_args(cfg);
+
+    return cfg;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     const Config cfg = parse_arguments(argc, argv);
 
-    if (cfg.verbose)
-        print_args(cfg);
-    
-    if (cfg.generate_seqs) {
+    if (cfg.generate_seqs)
         generate_seqs(cfg);
-    }
-    else {
-        auto seq = etas(cfg);
-        write_to_file(seq, cfg.filename, cfg.verbose);
-    }
+    else
+        write_to_file(etas(cfg), cfg.filename, cfg.verbose);
 
     return 0;
 }
