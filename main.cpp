@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <sstream>
 #include <string>
@@ -172,11 +173,7 @@ Sequence etas(const Config& cfg)
                 }
             }
 
-            auto sort = [](const Point& p1, const Point& p2)
-            {
-                return p1.t < p2.t;
-            };
-
+            auto sort = [](const Point& p1, const Point& p2) { return p1.t < p2.t; };
             std::sort(std::execution::par, seq.begin(), seq.end(), sort);
 
             ++nc;
@@ -244,63 +241,46 @@ void print_args(const Config& cfg)
     std::cout << "Program configuration:\n";
     std::cout << std::boolalpha;
 
-    std::cout << "  tmax\t\t" << cfg.tmax << '\n';
-    std::cout << "  mu\t\t" << cfg.mu << '\n';
-    std::cout << "  alpha\t\t" << cfg.alpha << '\n';
-    std::cout << "  bar_n\t\t" << cfg.bar_n << '\n';
-    std::cout << "  p\t\t" << cfg.p << '\n';
-    std::cout << "  c\t\t" << cfg.c << '\n';
-    std::cout << "  beta\t\t" << cfg.beta << "\n\n";
+    std::cout << "  --tmax\t\t" << cfg.tmax << '\n';
+    std::cout << "  --mu\t\t\t" << cfg.mu << '\n';
+    std::cout << "  --alpha\t\t" << cfg.alpha << '\n';
+    std::cout << "  --bar_n\t\t" << cfg.bar_n << '\n';
+    std::cout << "  --p\t\t\t" << cfg.p << '\n';
+    std::cout << "  --c\t\t\t" << cfg.c << '\n';
+    std::cout << "  --beta\t\t" << cfg.beta << "\n\n";
 
-    std::cout << "  generate_seqs\t" << cfg.generate_seqs << '\n';
-    std::cout << "  num_seqs\t" << cfg.num_seqs << '\n';
-    std::cout << "  max_len\t\t" << cfg.max_len << "\n\n";
+    std::cout << "  --generate_seqs\t" << cfg.generate_seqs << '\n';
+    std::cout << "  --num_seqs\t\t" << cfg.num_seqs << '\n';
+    std::cout << "  --max_len\t\t" << cfg.max_len << "\n\n";
 
-    std::cout << "  filename\t" << cfg.filename << '\n';
-    std::cout << "  dirname\t\t" << cfg.dirname << "\n\n";
+    std::cout << "  --filename\t\t" << cfg.filename << '\n';
+    std::cout << "  --dirname\t\t" << cfg.dirname << "\n\n";
 
-    std::cout << "  verbose\t\t" << cfg.verbose << '\n';
+    std::cout << "  --verbose\t\t" << cfg.verbose << '\n';
 }
 
 Config parse_arguments(int argc, char* argv[])
 {
     argparse::ArgumentParser program{ "ETAS" };
 
-    program.add_argument("--tmax").default_value(100.0)
-        .scan<'g', double>();
-    program.add_argument("--mu").default_value(1.0)
-        .scan<'g', double>();
-    program.add_argument("--alpha").default_value(2.0)
-        .scan<'g', double>();
-    program.add_argument("--bar_n").default_value(0.9)
-        .scan<'g', double>();
-    program.add_argument("--p").default_value(1.1)
-        .scan<'g', double>();
-    program.add_argument("--c").default_value(1e-09)
-        .scan<'g', double>();
-    program.add_argument("--beta").default_value(std::log(10))
-        .scan<'g', double>();
+    program.add_argument("--tmax").default_value(100.0).scan<'g', double>();
+    program.add_argument("--mu").default_value(1.0).scan<'g', double>();
+    program.add_argument("--alpha").default_value(2.0).scan<'g', double>();
+    program.add_argument("--bar_n").default_value(0.9).scan<'g', double>();
+    program.add_argument("--p").default_value(1.1).scan<'g', double>();
+    program.add_argument("--c").default_value(1e-09).scan<'g', double>();
+    program.add_argument("--beta").default_value(std::log(10)).scan<'g', double>();
 
-    program.add_argument("--generate_seqs")
-        .default_value(false)
-        .implicit_value(true);
-    program.add_argument("--num_seqs").default_value(100)
-        .scan<'i', int>();
-    program.add_argument("--max_len").default_value(300)
-        .scan<'i', int>();
+    program.add_argument("--generate_seqs").default_value(false).implicit_value(true);
+    program.add_argument("--num_seqs").default_value(100).scan<'i', int>();
+    program.add_argument("--max_len").default_value(300).scan<'i', int>();
 
-    program.add_argument("--filename")
-        .default_value(std::string{ "data.csv" });
-    program.add_argument("--dirname")
-        .default_value(std::string{ "data" });
+    program.add_argument("--filename").default_value(std::string{ "data.csv" });
+    program.add_argument("--dirname").default_value(std::string{ "data" });
 
-    program.add_argument("--verbose")
-        .default_value(false)
-        .implicit_value(true);
+    program.add_argument("--verbose").default_value(false).implicit_value(true);
 
-    program.add_argument("--print_config")
-        .default_value(false)
-        .implicit_value(true);
+    program.add_argument("--print_config").default_value(false).implicit_value(true);
 
     try {
         program.parse_args(argc, argv);
