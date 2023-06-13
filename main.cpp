@@ -180,7 +180,7 @@ Sequence etas(const Config& cfg)
             if (nc >= seq.size())
                 break;
 
-            if (seq.size() > cfg.max_len && cfg.generate_seqs)
+            if (static_cast<int>(seq.size()) > cfg.max_len && cfg.generate_seqs)
                 return seq;     // early return, will not be saved
         }
     }
@@ -219,7 +219,7 @@ void generate_seqs(const Config& cfg)
         do {
             const Sequence seq = etas(cfg);
 
-            if (seq.size() <= cfg.max_len) {
+            if (static_cast<int>(seq.size()) <= cfg.max_len) {
                 const std::string filename = cfg.dirname + '/' + cfg.filename
                     + std::to_string(i) + ".csv";
 
