@@ -19,7 +19,7 @@
 namespace pbar_settings
 {
     constexpr int bar_width     = 40;
-    constexpr double delay      = 0.5;   // update delay (s)
+    constexpr double delay      = 0.5;
     constexpr char fill         = '=';
     constexpr char lead         = '>';
     constexpr char remainder    = ' ';
@@ -56,7 +56,8 @@ void update_bar(const double progress, const T& status)
         else if (i == pos)  std::cout << pbar_settings::lead;
         else                std::cout << pbar_settings::remainder;
     }
-    std::cout << "] " << std::setw(3) << static_cast<int>(progress * 100) << "% " << status;
+    std::cout << "] " << std::setw(3) << static_cast<int>(progress * 100)
+                      << "% " << status;
     std::cout << '\r';
     std::cout.flush();
 }
@@ -149,12 +150,13 @@ Sequence etas(const Config& cfg)
             }
 
             while (true) {
-                const double tmp = std::pow(tc + cfg.c, 1 - cfg.p) + (cfg.p - 1)
-                    / (a * std::exp(cfg.alpha * seq[nc].m))
+                const double tmp = std::pow(tc + cfg.c, 1 - cfg.p)
+                    + (cfg.p - 1) / (a * std::exp(cfg.alpha * seq[nc].m))
                     * rd::logrand();
 
                 if (tmp > 0) {
-                    const double dt = std::pow(tmp, 1 / (1 - cfg.p)) - tc - cfg.c;
+                    const double dt = std::pow(tmp, 1 / (1 - cfg.p))
+                        - tc - cfg.c;
                     tc += dt;
                     const double tc_nc = tc + seq[nc].t;
 
@@ -173,15 +175,19 @@ Sequence etas(const Config& cfg)
                 }
             }
 
-            auto sort = [](const Point& p1, const Point& p2) { return p1.t < p2.t; };
+            auto sort = [](const Point& p1, const Point& p2)
+            {
+                return p1.t < p2.t;
+            };
             std::sort(std::execution::par, seq.begin(), seq.end(), sort);
 
             ++nc;
             if (nc >= seq.size())
                 break;
 
-            if (static_cast<int>(seq.size()) > cfg.max_len && cfg.generate_seqs)
-                return seq;     // early return, will not be saved
+            if (static_cast<int>(seq.size()) > cfg.max_len
+                    && cfg.generate_seqs)
+                return seq;
         }
     }
 
@@ -191,7 +197,9 @@ Sequence etas(const Config& cfg)
     return seq;
 }
 
-void write_to_file(const Sequence& seq, const std::string& filename, bool verbose = true)
+void write_to_file(const Sequence& seq,
+                   const std::string& filename,
+                   bool verbose = true)
 {
     std::ofstream file{ filename };
     std::size_t id = 0;
@@ -202,7 +210,8 @@ void write_to_file(const Sequence& seq, const std::string& filename, bool verbos
     }
 
     if (verbose)
-        std::cout << seq.size() << " events written to file `" << filename << "`.\n";
+        std::cout << seq.size() << " events written to file `"
+                  << filename << "`.\n";
 }
 
 void generate_seqs(const Config& cfg)
@@ -269,18 +278,25 @@ Config parse_arguments(int argc, char* argv[])
     program.add_argument("--bar_n").default_value(0.9).scan<'g', double>();
     program.add_argument("--p").default_value(1.1).scan<'g', double>();
     program.add_argument("--c").default_value(1e-09).scan<'g', double>();
-    program.add_argument("--beta").default_value(std::log(10)).scan<'g', double>();
+    program.add_argument("--beta").default_value(std::log(10))
+        .scan<'g', double>();
 
-    program.add_argument("--generate_seqs").default_value(false).implicit_value(true);
-    program.add_argument("--num_seqs").default_value(100).scan<'i', int>();
-    program.add_argument("--max_len").default_value(300).scan<'i', int>();
+    program.add_argument("--generate_seqs").default_value(false)
+        .implicit_value(true);
+    program.add_argument("--num_seqs").default_value(100)
+        .scan<'i', int>();
+    program.add_argument("--max_len").default_value(300)
+        .scan<'i', int>();
 
-    program.add_argument("--filename").default_value(std::string{ "data.csv" });
+    program.add_argument("--filename")
+        .default_value(std::string{ "data.csv" });
     program.add_argument("--dirname").default_value(std::string{ "data" });
 
-    program.add_argument("--verbose").default_value(false).implicit_value(true);
+    program.add_argument("--verbose").default_value(false)
+        .implicit_value(true);
 
-    program.add_argument("--print_config").default_value(false).implicit_value(true);
+    program.add_argument("--print_config").default_value(false)
+        .implicit_value(true);
 
     try {
         program.parse_args(argc, argv);
