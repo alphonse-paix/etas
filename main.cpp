@@ -171,7 +171,6 @@ auto get_progress_bar(const std::string_view& prefix_text) -> indicators::Progre
         option::Lead{">"},
         option::Remainder{" "},
         option::End{"]"},
-        option::ForegroundColor{Color::white},
         option::ShowElapsedTime{true},
         option::PrefixText{prefix_text},
         option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
