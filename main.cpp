@@ -1,6 +1,5 @@
 // main.cpp
 // ETAS algorithm
-// argpare, indicators (github.com/p-ranav)
 
 #include <algorithm>
 #include <chrono>
@@ -23,7 +22,7 @@
 #include <indicators/cursor_control.hpp>
 
 // forward declarations
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 struct Config;
 Config parse_arguments(int argc, char* argv[]);
@@ -39,10 +38,11 @@ struct Event;
 using Sequence = std::vector<Event>;
 Sequence etas(const Config& cfg);
 void generate_seqs(const Config& cfg);
-void write_to_file(const Sequence& seq, const std::string& filename, bool verbose);
+void write_to_file(const Sequence& seq,
+                   const std::string& filename, bool verbose);
 
 // program configuration related functions
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 struct Config
 {
@@ -64,8 +64,8 @@ struct Config
     bool verbose;
 };
 
-// parsing command line arguments with argparse from p-ranav
-// ---------------------------------------------------------
+// parsing command line arguments
+// ------------------------------
 Config parse_arguments(int argc, char* argv[])
 {
     argparse::ArgumentParser program{ "ETAS" };
@@ -156,11 +156,12 @@ void print_args(const Config& cfg)
 }
 
 // progress bar
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 constexpr double refresh_delay_in_s = 0.5;
 
-auto get_progress_bar(const std::string_view& prefix_text) -> indicators::ProgressBar
+auto get_progress_bar(
+        const std::string_view& prefix_text) -> indicators::ProgressBar
 {
     using namespace indicators;
 
@@ -178,7 +179,7 @@ auto get_progress_bar(const std::string_view& prefix_text) -> indicators::Progre
 }
 
 // simulation
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 // random functions required for the simulation
 // --------------------------------------------
@@ -261,7 +262,8 @@ Sequence etas(const Config& cfg)
 
                 if (diff.count() > refresh_delay_in_s) {
                     progress_bar.set_progress(seq[nc].t / cfg.tmax * 100.0);
-                    progress_bar.set_option(option::PostfixText{ std::to_string(m_max) });
+                    progress_bar.set_option(
+                            option::PostfixText{ std::to_string(m_max) });
                     start = end;
                 }
             }
@@ -324,7 +326,9 @@ void generate_seqs(const Config& cfg)
     }
 
     auto progress_bar = get_progress_bar("Generating sequences... ");
-    progress_bar.set_progress(0);
+
+    if (cfg.verbose)
+        progress_bar.set_progress(0);
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -344,24 +348,29 @@ void generate_seqs(const Config& cfg)
         const auto end = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<double> diff = end - start;
 
-        if (cfg.verbose) {
-            if (diff.count() > refresh_delay_in_s) {
-                progress_bar.set_progress(static_cast<double>(i) / cfg.num_seqs * 100.0);
+        if (cfg.verbose && (diff.count() > refresh_delay_in_s)) {
+                progress_bar.set_progress(
+                        static_cast<double>(i) / cfg.num_seqs * 100.0);
                 start = end;
-            }
         }
     }
 
-    progress_bar.set_progress(100);
+    if (cfg.verbose) {
+        progress_bar.set_progress(100);
+        std::cout << cfg.num_seqs << " sequences saved ("
+                  << cfg.dirname << "/).\n";
+    }
 }
 
-// take a sequence, a filename and write that sequence to the specified file with a CSV format
-// -------------------------------------------------------------------------------------------
+// take a sequence, a filename and write that sequence to the specified file
+// with a CSV format
+// -----------------
 void write_to_file(const Sequence& seq,
     const std::string& filename,
     bool verbose = true)
 {
-    std::ofstream file{ filename + ".csv" };
+    auto filename_ext = filename + ".csv";
+    std::ofstream file{ filename_ext };
     std::size_t id = 0;
 
     file << "ID,TIME,MAG,PARENT\n";
@@ -370,11 +379,10 @@ void write_to_file(const Sequence& seq,
     }
 
     if (verbose)
-        std::cout << seq.size() << " events written to file `"
-        << filename << ".csv`.\n";
+        std::cout << seq.size() << " events saved (" << filename_ext << ").\n";
 }
 
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
