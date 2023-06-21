@@ -223,7 +223,7 @@ Sequence etas(const Config& cfg)
     double tc = 0;
     double m_max = 0;
     bool verbose = cfg.verbose && !cfg.generate_seqs;
-    auto progress_bar = get_progress_bar("Generating aftershocks...");
+    auto progress_bar = get_progress_bar("Generating aftershocks... ");
 
     if (verbose)
         std::cout << "Generating background earthquakes... \n";
@@ -379,14 +379,10 @@ void write_to_file(const Sequence& seq,
 int main(int argc, char* argv[])
 {
     const Config cfg = parse_arguments(argc, argv);
-
-    indicators::show_console_cursor(false);
-
     if (cfg.generate_seqs)
         generate_seqs(cfg);
     else
         write_to_file(etas(cfg), cfg.filename, cfg.verbose);
 
-    indicators::show_console_cursor(true);
     return 0;
 }
