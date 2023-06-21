@@ -160,6 +160,13 @@ void print_args(const Config& cfg)
 
 constexpr double refresh_delay_in_s = 0.5;
 
+template<typename T> std::string to_string(const T& value)
+{
+    std::ostringstream ss;
+    ss << std::setprecision(2) << value;
+    return ss.str();
+}
+
 auto get_progress_bar(
         const std::string_view& prefix_text) -> indicators::ProgressBar
 {
@@ -246,7 +253,7 @@ Sequence etas(const Config& cfg)
 
     if (verbose) {
         progress_bar.set_progress(0);
-        progress_bar.set_option(option::PostfixText{ std::to_string(m_max) });
+        progress_bar.set_option(option::PostfixText{ to_string(m_max) });
     }
 
     if (a > 0) {
@@ -263,7 +270,7 @@ Sequence etas(const Config& cfg)
                 if (diff.count() > refresh_delay_in_s) {
                     progress_bar.set_progress(seq[nc].t / cfg.tmax * 100.0);
                     progress_bar.set_option(
-                            option::PostfixText{ std::to_string(m_max) });
+                            option::PostfixText{ to_string(m_max) });
                     start = end;
                 }
             }
@@ -338,7 +345,7 @@ void generate_seqs(const Config& cfg)
 
             if (static_cast<int>(seq.size()) <= cfg.max_len) {
                 const std::string filename = cfg.dirname + '/' + cfg.filename
-                    + std::to_string(i);
+                    + to_string(i);
 
                 write_to_file(seq, filename, false);
                 break;
